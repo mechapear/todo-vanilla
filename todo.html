@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pear's Todo list</title>
+    <style>
+      :root {
+        --primary-color: #06b6d4;
+        --secondary-color: #0891b2;
+        --divider-color: #f3f4f6;
+        --text-color: #3f3f46;
+      }
+
+      html {
+        font-size: 16px;
+      }
+
+      body {
+        background-color: #8ec5fc;
+        background-image: linear-gradient(62deg, #8ec5fc 0%, #e0c3fc 100%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+      }
+
+      #header {
+        text-align: center;
+        color: var(--text-color);
+      }
+
+      .main-wrapper {
+        max-width: 28rem;
+        margin: 1.5rem auto;
+        box-sizing: border-box;
+        border: 1px solid var(--divider-color);
+        border-radius: 0.5rem;
+        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.2);
+        background: white;
+      }
+      .todo-list-wrapper {
+        margin: 1.5rem;
+      }
+
+      .add-todo-input {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      #todo-input,
+      #add-todo-button {
+        box-sizing: border-box;
+        border: 1px solid var(--primary-color);
+        border-radius: 0.5rem;
+      }
+
+      #todo-input {
+        background-color: white;
+        padding: 0.5rem;
+        outline: none;
+        margin-right: 0.5rem;
+        flex: 1;
+        min-width: 1px;
+      }
+
+      #todo-input:focus-visible {
+        border: 1px solid var(--secondary-color);
+      }
+
+      #add-todo-button {
+        text-align: center;
+        color: white;
+        background-color: var(--primary-color);
+        padding: 0.5rem 1rem;
+        min-width: 6rem;
+        flex-shrink: 0;
+      }
+
+      #add-todo-button:hover {
+        background-color: var(--secondary-color);
+        cursor: pointer;
+      }
+
+      #todo-list {
+        list-style-type: none;
+        color: var(--text-color);
+        box-sizing: border-box;
+        margin: 1.5rem 0;
+        padding: 0;
+      }
+
+      .todo-item-label {
+        display: grid;
+        grid-template-columns: 2rem 20rem 2rem;
+        align-items: start;
+        padding: 0.5rem;
+        cursor: pointer;
+        margin: 0.5em 0;
+      }
+
+      .todo-item-label:hover {
+        background-color: var(--divider-color);
+      }
+
+      .remove-todo-item {
+        display: inline-block;
+        border: none;
+        border-radius: 0.5rem;
+        color: var(--divider-color);
+        text-align: center;
+        background-color: var(--text-color);
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        opacity: 0;
+      }
+
+      .todo-item-label:hover .remove-todo-item {
+        opacity: 1;
+      }
+
+      .icon {
+        width: 0.75em;
+        transform: translateY(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="main-wrapper">
+      <h1 id="header">My Todo List</h1>
+      <section class="todo-list-wrapper">
+        <div class="add-todo-input">
+          <input type="text" id="todo-input" placeholder="New Task" />
+          <button id="add-todo-button">add</button>
+        </div>
+        <ul id="todo-list" class="all-todo-list"></ul>
+      </section>
+    </section>
+    <script>
+      // find info from the ID attribute
+      const inputEl = document.getElementById('todo-input')
+      const listEl = document.getElementById('todo-list')
+      const buttonEl = document.getElementById('add-todo-button')
+
+      // call function เมื่อเปิดหน้ามาครั้งแรก
+      firstLoadPage()
+
+      // bind event ที่ปุ่ม add
+      // inputEl.addEventListener('keypress', handleAddNewTodoText)
+      inputEl.addEventListener('keypress', triggerByEnter)
+      buttonEl.addEventListener('click', handleAddNewTodoText)
+      // bind event เมื่อมีการเปลี่ยนแปลงปุ่ม check
+      listEl.addEventListener('change', handleCheckedChange)
+      // bind event ผ่าน list element เพราะเป็นสิ่งที่อยู่ใกล้สุดที่ไม่เปลี่ยนแปลง (แปะ function ไว้กับ remove element ในแต่ละตัว)
+      listEl.addEventListener('click', handleRemoveTodoItem)
+
+      // find remove element from the class attribute and convert to an array
+      // ได้ remove element ออกมาครบทุกตัว
+      // const removeElList = Array.from(
+      //   document.getElementsByClassName('remove-todo-item')
+      // )
+      // console.log(`> removeElList: `, removeElList)
+
+      // bind event (แปะ function ไว้กับ remove element ในแต่ละตัว)
+      // removeElList.forEach((removeEl, index) => {
+      //   console.log(`> removeEl: `, removeEl)
+      //   removeEl.addEventListener('click', handleRemoveTodoItem)
+      // })
+
+      function firstLoadPage() {
+        const todoList = getDataFromStorage()
+        todoList.forEach((todoItem, index) => {
+          // เอาข้อมูลไปแสดงผลใน html แบบที่ 1
+          addTodoListToHtml(todoItem, index, 'beforeend')
+        })
+        return todoList
+      }
+
+      // Trigger Button Click on Enter
+      function triggerByEnter(event) {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          buttonEl.click()
+        }
+      }
+
+      function handleAddNewTodoText() {
+        // get input data
+        const newTodoText = inputEl.value
+
+        if (newTodoText !== '') {
+          addNewTodoItemInTodoList({
+            text: newTodoText,
+            checked: false,
+          })
+          // เคลียร์ข้อมูลในกล่อง เพิ่ม todo list
+          inputEl.value = ''
+        }
+      }
+
+      function handleCheckedChange(event) {
+        const isChecked = event.target.checked
+        // หาค่า index และแปลงค่าจาก string เป็น number
+        const index = Number(event.target.dataset.index)
+        // เปลี่ยนค่า checked ใน todoList + save ใน localStorage
+        updateCheckedInTodoList(index, isChecked)
+      }
+
+      function handleRemoveTodoItem(event) {
+        // method prevents propagation of the same event from being called.
+        event.stopPropagation()
+        if (checkEventClass(event.path, 'remove-todo-item')) {
+
+          console.log(`> ยัยเจ้าเมฆ`)
+        }
+
+        // หาว่า todo item ไหนที่โดนลบ หรือ allTodoList[index]
+        //  ลบ todo item นั้นออกจาก localStorage
+        //  อัปเดตในหน้า html
+      }
+
+      function checkEventClass(path, className) {
+        for (const pathItem of path) {
+          if (!pathItem.classList) {
+            continue
+          }
+          if (pathItem.classList.contains(className)) return true
+        }
+        return false
+      }
+
+      //----
+
+      // get allTodoList from localStorage
+      function getDataFromStorage() {
+        const rawStorageStr = localStorage.getItem('allTodoList')
+        // JSON.parse() = to convert text into a JavaScript object
+        return rawStorageStr ? JSON.parse(rawStorageStr) : []
+      }
+
+      // save todoList ใน localStorage
+      function saveInStorage(todoList) {
+        // JSON.stringify() = to convert a JavaScript object or value to a JSON string
+        localStorage.setItem('allTodoList', JSON.stringify(todoList))
+      }
+
+      // delete todoItem ใน localStorage
+      function deleteInStorage(todoItem) {
+        localStorage.removeItem('allTodoList', JSON.parse(todoItem))
+      }
+
+      // เอาข้อมูลไปแสดงผลใน html แบบที่ 1
+      // สร้าง element จาก html str และเพิ่มเข้าไปใน List element (DOM)
+      function addTodoListToHtml(todoItem, index, position) {
+        listEl.insertAdjacentHTML(
+          position,
+          `<li class="todo-item">
+            <label class="todo-item-label">
+              <input class="todo-check-box" type='checkbox' ${
+                todoItem.checked ? 'checked' : ''
+              } data-index='${index}'/>
+              <span class="todo-text">${todoItem.text}</span>
+              <button class="remove-todo-item"><svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="trash-alt" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M32 464a48 48 0 0 0 48 48h288a48 48 0 0 0 48-48V128H32zm272-256a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zM432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16z" class=""></path></svg>️</button>
+            </label>
+          </li>`
+        )
+      }
+
+      // เอาข้อมูลไปแสดงผลใน html แบบที่ 2
+      // list.insertAdjacentHTML(
+      //   'beforeend',
+      //   prevTodo.map((prevTodoText) => `<li>${prevTodoText}</li>`).join('')
+      // )
+
+      // เพิ่ม todo list ใหม่ ไปแสดงใน html
+      function addNewTodoItemInTodoList(newTodoItem) {
+        const todoList = getDataFromStorage()
+        todoList.unshift(newTodoItem)
+        // 'afterbegin': Just inside the element, before its first child.
+        addTodoListToHtml(newTodoItem, todoList.length - 1, 'afterbegin')
+        saveInStorage(todoList)
+      }
+
+      // เปลี่ยนค่า checked ใน todoList + save ใน localStorage
+      function updateCheckedInTodoList(index, isChecked) {
+        const todoList = getDataFromStorage()
+        todoList[index].checked = isChecked
+        saveInStorage(todoList)
+      }
+    </script>
+  </body>
+</html>
