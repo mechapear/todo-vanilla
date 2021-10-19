@@ -38,6 +38,7 @@
         box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.2);
         background: white;
       }
+
       .todo-list-wrapper {
         margin: 1.5rem;
       }
@@ -143,7 +144,7 @@
       const buttonEl = document.getElementById('add-todo-button')
 
       // call function เมื่อเปิดหน้ามาครั้งแรก
-      firstLoadPage()
+      updateTodoListHtmlFromStorage()
 
       // bind event ที่ปุ่ม add
       // inputEl.addEventListener('keypress', handleAddNewTodoText)
@@ -154,20 +155,9 @@
       // bind event ผ่าน list element เพราะเป็นสิ่งที่อยู่ใกล้สุดที่ไม่เปลี่ยนแปลง (แปะ function ไว้กับ remove element ในแต่ละตัว)
       listEl.addEventListener('click', handleRemoveTodoItem)
 
-      // find remove element from the class attribute and convert to an array
-      // ได้ remove element ออกมาครบทุกตัว
-      // const removeElList = Array.from(
-      //   document.getElementsByClassName('remove-todo-item')
-      // )
-      // console.log(`> removeElList: `, removeElList)
-
-      // bind event (แปะ function ไว้กับ remove element ในแต่ละตัว)
-      // removeElList.forEach((removeEl, index) => {
-      //   console.log(`> removeEl: `, removeEl)
-      //   removeEl.addEventListener('click', handleRemoveTodoItem)
-      // })
-
-      function firstLoadPage() {
+      function updateTodoListHtmlFromStorage() {
+        // clear ข้อมูล html todo list อันเก่าออกทั้งหมด
+        listEl.innerHTML = ''
         const todoList = getDataFromStorage()
         todoList.forEach((todoItem, index) => {
           // เอาข้อมูลไปแสดงผลใน html แบบที่ 1
@@ -189,6 +179,7 @@
         const newTodoText = inputEl.value
 
         if (newTodoText !== '') {
+          // เพิ่ม todo list ใหม่ ไปแสดงใน html
           addNewTodoItemInTodoList({
             text: newTodoText,
             checked: false,
@@ -199,9 +190,12 @@
       }
 
       function handleCheckedChange(event) {
+        // หา check box element ที่มีการเปลี่ยนแปลง
         const isChecked = event.target.checked
+        // หา list element ที่ใกล้ที่สุด เพื่อจะเอาเลข index
+        const todoItemEl = event.target.closest('.todo-item')
         // หาค่า index และแปลงค่าจาก string เป็น number
-        const index = Number(event.target.dataset.index)
+        const index = Number(todoItemEl.dataset.index)
         // เปลี่ยนค่า checked ใน todoList + save ใน localStorage
         updateCheckedInTodoList(index, isChecked)
       }
@@ -210,23 +204,12 @@
         // method prevents propagation of the same event from being called.
         event.stopPropagation()
         if (checkEventClass(event.path, 'remove-todo-item')) {
-
-          console.log(`> ยัยเจ้าเมฆ`)
+          // หา list element ที่ใกล้ที่สุด เพื่อจะเอาเลข index
+          const todoItemEl = event.target.closest('.todo-item')
+          // หาค่า index และแปลงค่าจาก string เป็น number
+          const index = Number(todoItemEl.dataset.index)
+          removeInStorage(index)
         }
-
-        // หาว่า todo item ไหนที่โดนลบ หรือ allTodoList[index]
-        //  ลบ todo item นั้นออกจาก localStorage
-        //  อัปเดตในหน้า html
-      }
-
-      function checkEventClass(path, className) {
-        for (const pathItem of path) {
-          if (!pathItem.classList) {
-            continue
-          }
-          if (pathItem.classList.contains(className)) return true
-        }
-        return false
       }
 
       //----
@@ -235,6 +218,7 @@
       function getDataFromStorage() {
         const rawStorageStr = localStorage.getItem('allTodoList')
         // JSON.parse() = to convert text into a JavaScript object
+        // localstorage only supports string values, so you need to parse data.
         return rawStorageStr ? JSON.parse(rawStorageStr) : []
       }
 
@@ -244,21 +228,16 @@
         localStorage.setItem('allTodoList', JSON.stringify(todoList))
       }
 
-      // delete todoItem ใน localStorage
-      function deleteInStorage(todoItem) {
-        localStorage.removeItem('allTodoList', JSON.parse(todoItem))
-      }
-
       // เอาข้อมูลไปแสดงผลใน html แบบที่ 1
       // สร้าง element จาก html str และเพิ่มเข้าไปใน List element (DOM)
       function addTodoListToHtml(todoItem, index, position) {
         listEl.insertAdjacentHTML(
           position,
-          `<li class="todo-item">
+          `<li class="todo-item" data-index="${index}">
             <label class="todo-item-label">
-              <input class="todo-check-box" type='checkbox' ${
+              <input class="todo-check-box" type="checkbox" ${
                 todoItem.checked ? 'checked' : ''
-              } data-index='${index}'/>
+              } />
               <span class="todo-text">${todoItem.text}</span>
               <button class="remove-todo-item"><svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="trash-alt" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M32 464a48 48 0 0 0 48 48h288a48 48 0 0 0 48-48V128H32zm272-256a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zM432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16z" class=""></path></svg>️</button>
             </label>
@@ -276,9 +255,8 @@
       function addNewTodoItemInTodoList(newTodoItem) {
         const todoList = getDataFromStorage()
         todoList.unshift(newTodoItem)
-        // 'afterbegin': Just inside the element, before its first child.
-        addTodoListToHtml(newTodoItem, todoList.length - 1, 'afterbegin')
         saveInStorage(todoList)
+        updateTodoListHtmlFromStorage()
       }
 
       // เปลี่ยนค่า checked ใน todoList + save ใน localStorage
@@ -286,6 +264,29 @@
         const todoList = getDataFromStorage()
         todoList[index].checked = isChecked
         saveInStorage(todoList)
+      }
+
+      //  Remove an item by key from localStorage
+      function removeInStorage(index) {
+        // get allTodoList from localStorage
+        const allTodoList = getDataFromStorage()
+        // splice = changes the contents of an array by removing or replacing existing elements and/or adding new elements in place
+        // Remove 1 element at index ที่ต้องการ
+        allTodoList.splice(index, 1)
+        // save todoList ใน localStorage
+        saveInStorage(allTodoList)
+        updateTodoListHtmlFromStorage()
+      }
+
+      // เช็ก class ใน event ว่าตรงตามที่เราต้องการรึป่าว
+      function checkEventClass(path, className) {
+        for (const pathItem of path) {
+          if (!pathItem.classList) {
+            continue
+          }
+          if (pathItem.classList.contains(className)) return true
+        }
+        return false
       }
     </script>
   </body>
